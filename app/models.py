@@ -30,6 +30,14 @@ class RecommendedMode(str, Enum):
     CASH_HEAVY = "cash_heavy"
 
 
+class RecommendedStrategy(str, Enum):
+    SMA_CROSSOVER = "sma_crossover"
+    TREND_FOLLOWING = "trend_following"
+    MEAN_REVERSION = "mean_reversion"
+    BREAKOUT = "breakout"
+    NO_TRADE = "no_trade"
+
+
 class MarketRegimeRequest(BaseModel):
     symbol: str = Field(default="SPY", description="Market proxy symbol, usually SPY/QQQ/VTI.")
     price: Optional[float] = Field(default=None, ge=0)
@@ -48,6 +56,19 @@ class MarketRegimeData(BaseModel):
     confidence_score: float = Field(ge=0, le=1)
     reason: str
     strategy_bias: Dict[str, float]
+    signals: Dict[str, Any]
+
+
+class StrategyRecommendation(BaseModel):
+    symbol: str
+    regime: Regime
+    risk_level: RiskLevel
+    recommended_mode: RecommendedMode
+    recommended_strategy: RecommendedStrategy
+    position_size_multiplier: float = Field(ge=0, le=1)
+    confidence_score: float = Field(ge=0, le=1)
+    reason: str
+    alternatives: Dict[str, float]
     signals: Dict[str, Any]
 
 

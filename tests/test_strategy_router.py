@@ -23,7 +23,7 @@ def test_bull_regime_recommends_trend_following():
 
 def test_sideways_regime_recommends_mean_reversion():
     regime = analyze_market_regime(
-        MarketRegimeRequest(symbol="SPY", price=505, sma_50=502, sma_200=500, atr_pct=0.018, vix=18, market_breadth_pct=0.50)
+        MarketRegimeRequest(symbol="SPY", price=500, sma_50=502, sma_200=500, atr_pct=0.018, vix=18, market_breadth_pct=0.50)
     )
 
     recommendation = recommend_strategy(regime)

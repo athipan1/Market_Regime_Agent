@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Generic, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -66,9 +66,15 @@ class StrategyRecommendation(BaseModel):
     recommended_mode: RecommendedMode
     recommended_strategy: RecommendedStrategy
     position_size_multiplier: float = Field(ge=0, le=1)
+    risk_multiplier: float = Field(default=1.0, ge=0, le=1)
+    risk_budget_multiplier: float = Field(default=1.0, ge=0, le=1)
+    exposure_cap: float = Field(default=1.0, ge=0, le=1)
     confidence_score: float = Field(ge=0, le=1)
     reason: str
     alternatives: Dict[str, float]
+    allowed_strategies: List[RecommendedStrategy] = Field(default_factory=list)
+    blocked_strategies: List[RecommendedStrategy] = Field(default_factory=list)
+    decision_notes: List[str] = Field(default_factory=list)
     signals: Dict[str, Any]
 
 

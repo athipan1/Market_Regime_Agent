@@ -18,6 +18,10 @@ def test_bull_regime_recommends_trend_following():
 
     assert recommendation.recommended_strategy == RecommendedStrategy.TREND_FOLLOWING
     assert recommendation.position_size_multiplier == 1.0
+    assert recommendation.risk_multiplier == 1.0
+    assert recommendation.risk_budget_multiplier == 1.0
+    assert recommendation.exposure_cap == 1.0
+    assert recommendation.allowed_strategies[0] == RecommendedStrategy.TREND_FOLLOWING
     assert recommendation.alternatives["trend_following"] > recommendation.alternatives["mean_reversion"]
 
 
@@ -30,6 +34,10 @@ def test_sideways_regime_recommends_mean_reversion():
 
     assert recommendation.recommended_strategy == RecommendedStrategy.MEAN_REVERSION
     assert recommendation.position_size_multiplier == 0.5
+    assert recommendation.risk_multiplier == 0.5
+    assert recommendation.risk_budget_multiplier == 0.6
+    assert recommendation.exposure_cap == 0.5
+    assert recommendation.allowed_strategies == [RecommendedStrategy.MEAN_REVERSION, RecommendedStrategy.SMA_CROSSOVER]
 
 
 def test_bear_regime_recommends_no_trade():
@@ -41,6 +49,10 @@ def test_bear_regime_recommends_no_trade():
 
     assert recommendation.recommended_strategy == RecommendedStrategy.NO_TRADE
     assert recommendation.position_size_multiplier == 0.25
+    assert recommendation.risk_multiplier == 0.25
+    assert recommendation.risk_budget_multiplier == 0.35
+    assert recommendation.exposure_cap == 0.25
+    assert recommendation.allowed_strategies == [RecommendedStrategy.MEAN_REVERSION, RecommendedStrategy.SMA_CROSSOVER]
 
 
 def test_volatile_regime_recommends_no_trade_and_zero_size():
@@ -52,6 +64,11 @@ def test_volatile_regime_recommends_no_trade_and_zero_size():
 
     assert recommendation.recommended_strategy == RecommendedStrategy.NO_TRADE
     assert recommendation.position_size_multiplier == 0.0
+    assert recommendation.risk_multiplier == 0.0
+    assert recommendation.risk_budget_multiplier == 0.0
+    assert recommendation.exposure_cap == 0.0
+    assert recommendation.allowed_strategies == []
+    assert recommendation.decision_notes
 
 
 def test_market_strategy_endpoint():
@@ -74,3 +91,8 @@ def test_market_strategy_endpoint():
     assert payload["data"]["recommended_strategy"] == "trend_following"
     assert payload["data"]["regime"] == "bull"
     assert payload["data"]["symbol"] == "SPY"
+    assert payload["data"]["risk_multiplier"] == 1.0
+    assert payload["data"]["risk_budget_multiplier"] == 1.0
+    assert payload["data"]["exposure_cap"] == 1.0
+    assert payload["data"]["allowed_strategies"] == ["trend_following", "breakout", "sma_crossover"]
+    assert "decision_notes" in payload["data"]

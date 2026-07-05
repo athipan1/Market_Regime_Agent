@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.models import HealthData, MarketRegimeData, MarketRegimeRequest, StandardAgentResponse, StrategyRecommendation
+from app.models import (
+    HealthData,
+    MarketRegimeData,
+    MarketRegimeRequest,
+    StandardAgentResponse,
+    StrategyRecommendation,
+)
 from app.service import analyze_market_regime
 from app.strategy_router import recommend_strategy
+from app.system_contract import router as system_contract_router
 
 
 app = FastAPI(
@@ -12,6 +19,7 @@ app = FastAPI(
     description="Classifies market regime and risk mode for the multi-agent trading system.",
     version="0.1.0",
 )
+app.include_router(system_contract_router)
 
 
 @app.get("/health", response_model=StandardAgentResponse[HealthData])

@@ -17,6 +17,13 @@ TRADEABLE_STRATEGIES = [
     RecommendedStrategy.BREAKOUT,
 ]
 
+MULTIPLIER_FIELDS = (
+    "position_size_multiplier",
+    "risk_multiplier",
+    "risk_budget_multiplier",
+    "exposure_cap",
+)
+
 
 def _alternatives_for_regime(regime: Regime, risk_level: RiskLevel) -> dict[str, float]:
     if risk_level == RiskLevel.HIGH:
@@ -99,6 +106,23 @@ def _exposure_cap(regime: Regime, risk_level: RiskLevel) -> float:
     return 1.0
 
 
+def _recommendation_multipliers(
+    regime: Regime,
+    risk_level: RiskLevel,
+    recommended_mode: RecommendedMode,
+    allowed_strategies: list[RecommendedStrategy],
+) -> dict[str, float]:
+    if not allowed_strategies:
+        return {field: 0.0 for field in MULTIPLIER_FIELDS}
+
+    return {
+        "position_size_multiplier": _position_size_multiplier(regime, risk_level, recommended_mode),
+        "risk_multiplier": _risk_multiplier(regime, risk_level),
+        "risk_budget_multiplier": _risk_budget_multiplier(regime, risk_level),
+        "exposure_cap": _exposure_cap(regime, risk_level),
+    }
+
+
 def _allowed_strategies(regime: Regime, risk_level: RiskLevel) -> list[RecommendedStrategy]:
     if regime == Regime.VOLATILE or risk_level == RiskLevel.HIGH:
         return []
@@ -151,22 +175,43 @@ def _reason(regime: Regime, strategy: RecommendedStrategy, risk_level: RiskLevel
     return f"{regime.value} regime uses sma_crossover as the neutral fallback strategy."
 
 
+def _validate_strategy_recommendation(recommendation: StrategyRecommendation) -> None:
+    if recommendation.allowed_strategies:
+        return
+
+    nonzero_multipliers = {
+        field: getattr(recommendation, field)
+        for field in MULTIPLIER_FIELDS
+        if getattr(recommendation, field) != 0.0
+    }
+    if nonzero_multipliers:
+        raise RuntimeError(
+            "StrategyRecommendation safety invariant violated: allowed_strategies is empty "
+            f"but multipliers are non-zero: {nonzero_multipliers}"
+        )
+
+
 def recommend_strategy(regime_data: MarketRegimeData) -> StrategyRecommendation:
     alternatives = _alternatives_for_regime(regime_data.regime, regime_data.risk_level)
     recommended = RecommendedStrategy(max(alternatives, key=alternatives.get))
-    multiplier = _position_size_multiplier(regime_data.regime, regime_data.risk_level, regime_data.recommended_mode)
     allowed = _allowed_strategies(regime_data.regime, regime_data.risk_level)
+    multipliers = _recommendation_multipliers(
+        regime_data.regime,
+        regime_data.risk_level,
+        regime_data.recommended_mode,
+        allowed,
+    )
 
-    return StrategyRecommendation(
+    recommendation = StrategyRecommendation(
         symbol=regime_data.symbol,
         regime=regime_data.regime,
         risk_level=regime_data.risk_level,
         recommended_mode=regime_data.recommended_mode,
         recommended_strategy=recommended,
-        position_size_multiplier=multiplier,
-        risk_multiplier=_risk_multiplier(regime_data.regime, regime_data.risk_level),
-        risk_budget_multiplier=_risk_budget_multiplier(regime_data.regime, regime_data.risk_level),
-        exposure_cap=_exposure_cap(regime_data.regime, regime_data.risk_level),
+        position_size_multiplier=multipliers["position_size_multiplier"],
+        risk_multiplier=multipliers["risk_multiplier"],
+        risk_budget_multiplier=multipliers["risk_budget_multiplier"],
+        exposure_cap=multipliers["exposure_cap"],
         confidence_score=regime_data.confidence_score,
         reason=_reason(regime_data.regime, recommended, regime_data.risk_level),
         alternatives=alternatives,
@@ -175,3 +220,5 @@ def recommend_strategy(regime_data: MarketRegimeData) -> StrategyRecommendation:
         decision_notes=_decision_notes(regime_data.regime, regime_data.risk_level, allowed),
         signals=regime_data.signals,
     )
+    _validate_strategy_recommendation(recommendation)
+    return recommendation

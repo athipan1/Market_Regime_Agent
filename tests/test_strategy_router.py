@@ -1,12 +1,69 @@
+import itertools
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models import MarketRegimeRequest, RecommendedStrategy
-from app.service import analyze_market_regime
-from app.strategy_router import recommend_strategy
+from app.models import (
+    MarketRegimeData,
+    MarketRegimeRequest,
+    RecommendedStrategy,
+    Regime,
+    RiskLevel,
+)
+from app.service import _recommended_mode, analyze_market_regime
+from app.strategy_router import MULTIPLIER_FIELDS, recommend_strategy
 
 
 client = TestClient(app)
+
+
+def _regime_data(regime: Regime, risk_level: RiskLevel) -> MarketRegimeData:
+    return MarketRegimeData(
+        symbol="SPY",
+        regime=regime,
+        risk_level=risk_level,
+        recommended_mode=_recommended_mode(regime, risk_level),
+        confidence_score=0.8,
+        reason="test fixture",
+        strategy_bias={},
+        signals={},
+    )
+
+
+@pytest.mark.parametrize(
+    ("regime", "risk_level"),
+    itertools.product(Regime, RiskLevel),
+    ids=lambda value: value.value,
+)
+def test_all_regime_and_risk_combinations_preserve_multiplier_contract(regime, risk_level):
+    recommendation = recommend_strategy(_regime_data(regime, risk_level))
+
+    if not recommendation.allowed_strategies:
+        assert all(getattr(recommendation, field) == 0.0 for field in MULTIPLIER_FIELDS)
+
+
+def test_bear_high_blocks_all_strategies_and_zeroes_all_multipliers():
+    recommendation = recommend_strategy(_regime_data(Regime.BEAR, RiskLevel.HIGH))
+
+    assert recommendation.allowed_strategies == []
+    assert recommendation.recommended_strategy == RecommendedStrategy.NO_TRADE
+    assert all(getattr(recommendation, field) == 0.0 for field in MULTIPLIER_FIELDS)
+
+
+def test_output_validation_rejects_empty_allowed_strategies_with_nonzero_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        "app.strategy_router._recommendation_multipliers",
+        lambda *args, **kwargs: {
+            "position_size_multiplier": 0.25,
+            "risk_multiplier": 0.0,
+            "risk_budget_multiplier": 0.0,
+            "exposure_cap": 0.0,
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="safety invariant violated"):
+        recommend_strategy(_regime_data(Regime.BEAR, RiskLevel.HIGH))
 
 
 def test_bull_regime_recommends_trend_following():

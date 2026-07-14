@@ -48,6 +48,22 @@ POST /market/strategy-bias
 POST /market/strategy
 ```
 
+## Strategy Recommendation Safety Contract
+
+Callers such as `Manager_Agent`, `Portfolio_Agent`, and `Risk_Agent` **must check
+`allowed_strategies` before every multiplier or strategy recommendation**.
+
+### Contract guarantee
+
+- An empty `allowed_strategies` list means that no strategy may open a new
+  position.
+- Whenever `allowed_strategies` is empty, `position_size_multiplier`,
+  `risk_multiplier`, `risk_budget_multiplier`, and `exposure_cap` are all
+  guaranteed to be `0.0`.
+- Callers that already honor `allowed_strategies` require no behavior change;
+  the zero multipliers are a redundant safety signal for callers that consume
+  sizing fields.
+
 ## Notes
 
 1. This service provides market-regime context for other agents.

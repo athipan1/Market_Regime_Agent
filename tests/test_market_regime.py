@@ -1,8 +1,9 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models import MarketRegimeRequest, Regime, RiskLevel
-from app.service import analyze_market_regime
+from app.service import _recommended_mode, _strategy_bias, analyze_market_regime
 
 
 client = TestClient(app)
@@ -67,6 +68,16 @@ def test_high_volatility_overrides_non_bear_to_volatile():
     assert result.regime == Regime.VOLATILE
     assert result.risk_level == RiskLevel.HIGH
     assert result.recommended_mode == "cash_heavy"
+
+
+@pytest.mark.parametrize("risk_level", RiskLevel)
+def test_volatile_regime_is_explicitly_defensive_at_every_risk_level(risk_level):
+    assert _recommended_mode(Regime.VOLATILE, risk_level) == "cash_heavy"
+    assert _strategy_bias(Regime.VOLATILE, risk_level) == {
+        "core_dividend": 0.70,
+        "value_rebound": 0.25,
+        "news_momentum": 0.05,
+    }
 
 
 def test_market_regime_endpoint():

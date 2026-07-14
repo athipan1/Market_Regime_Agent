@@ -40,6 +40,8 @@ def _classify_trend(price: float | None, sma_50: float | None, sma_200: float | 
 
 
 def _strategy_bias(regime: Regime, risk_level: RiskLevel) -> Dict[str, float]:
+    if regime == Regime.VOLATILE:
+        return {"core_dividend": 0.70, "value_rebound": 0.25, "news_momentum": 0.05}
     if risk_level == RiskLevel.HIGH:
         return {"core_dividend": 0.70, "value_rebound": 0.25, "news_momentum": 0.05}
     if regime == Regime.BULL:
@@ -52,6 +54,8 @@ def _strategy_bias(regime: Regime, risk_level: RiskLevel) -> Dict[str, float]:
 
 
 def _recommended_mode(regime: Regime, risk_level: RiskLevel) -> RecommendedMode:
+    if regime == Regime.VOLATILE:
+        return RecommendedMode.CASH_HEAVY
     if risk_level == RiskLevel.HIGH or regime == Regime.BEAR:
         return RecommendedMode.CASH_HEAVY
     if risk_level == RiskLevel.MEDIUM or regime in {Regime.SIDEWAYS, Regime.UNKNOWN}:

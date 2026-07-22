@@ -48,6 +48,30 @@ POST /market/strategy-bias
 POST /market/strategy
 ```
 
+## Profit policy context
+
+Every market analysis response includes a non-binding
+`data.profit_policy_context` projection for Manager_Agent:
+
+```json
+{
+  "context_version": "profit-market-context.v1",
+  "regime": "bull",
+  "risk_level": "medium",
+  "atr_pct": 0.025,
+  "volatility_percentile": 65,
+  "trend_strength": 0.48,
+  "observed_at": "2026-07-22T00:00:00Z",
+  "source": "market-regime-agent"
+}
+```
+
+`volatility_percentile` and `observed_at` are preserved only when supplied by
+the caller. `trend_strength` is a deterministic normalized separation of price,
+SMA50, and SMA200; it is `null` when those inputs are incomplete. The agent
+never fabricates missing context and this projection cannot override stop or
+Risk_Agent safety rules.
+
 ## Strategy Recommendation Safety Contract
 
 Callers such as `Manager_Agent`, `Portfolio_Agent`, and `Risk_Agent` **must check

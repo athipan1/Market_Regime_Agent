@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
-from app.models import MarketRegimeData, MarketRegimeRequest, RecommendedMode, Regime, RiskLevel
+from app.models import (
+    MarketRegimeData,
+    MarketRegimeRequest,
+    ProfitPolicyMarketContext,
+    RecommendedMode,
+    Regime,
+    RiskLevel,
+)
 
 
 BASE_STRATEGY_BIAS = {
@@ -76,6 +83,21 @@ def _confidence(request: MarketRegimeRequest, regime: Regime, risk_level: RiskLe
     return round(max(0.0, min(score, 0.85)), 4)
 
 
+def _trend_strength(request: MarketRegimeRequest) -> float | None:
+    """Normalize price/SMA separation without fabricating missing evidence."""
+    if (
+        request.price is None
+        or request.sma_50 is None
+        or request.sma_200 is None
+        or request.price <= 0
+        or request.sma_200 <= 0
+    ):
+        return None
+    price_separation = abs(request.price - request.sma_50) / request.price
+    average_separation = abs(request.sma_50 - request.sma_200) / request.sma_200
+    return round(min(1.0, (price_separation + average_separation) / 0.20), 4)
+
+
 def analyze_market_regime(request: MarketRegimeRequest) -> MarketRegimeData:
     trend_regime, trend_reason = _classify_trend(request.price, request.sma_50, request.sma_200)
     risk_level = _risk_from_volatility(request.atr_pct, request.vix)
@@ -109,4 +131,12 @@ def analyze_market_regime(request: MarketRegimeRequest) -> MarketRegimeData:
             "vix": request.vix,
             "market_breadth_pct": request.market_breadth_pct,
         },
+        profit_policy_context=ProfitPolicyMarketContext(
+            regime=regime,
+            risk_level=risk_level,
+            atr_pct=request.atr_pct,
+            volatility_percentile=request.volatility_percentile,
+            trend_strength=_trend_strength(request),
+            observed_at=request.market_data_timestamp,
+        ),
     )

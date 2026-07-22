@@ -4,6 +4,12 @@ Market Regime Agent classifies the current market environment for the multi-agen
 
 It does **not** place orders. It returns advisory regime, risk level, and strategy-bias metadata for `Manager_Agent`, `Portfolio_Agent`, and `Risk_Agent`.
 
+Market responses also expose a versioned `profit_policy_context` projection for
+Manager_Agent. It carries regime/risk, ATR, optional volatility percentile,
+deterministic trend strength, and the caller-supplied observation timestamp.
+Missing evidence remains `null`; this advisory context cannot override stop,
+Risk_Agent, or execution safety rules.
+
 ## Responsibilities
 
 - Classify market regime: `bull`, `bear`, `sideways`, `volatile`, or `unknown`

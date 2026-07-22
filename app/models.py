@@ -44,8 +44,23 @@ class MarketRegimeRequest(BaseModel):
     sma_50: Optional[float] = Field(default=None, ge=0)
     sma_200: Optional[float] = Field(default=None, ge=0)
     atr_pct: Optional[float] = Field(default=None, ge=0, description="ATR as percentage/ratio, e.g. 0.025 = 2.5%")
+    volatility_percentile: Optional[float] = Field(default=None, ge=0, le=100)
+    market_data_timestamp: Optional[datetime] = None
     vix: Optional[float] = Field(default=None, ge=0)
     market_breadth_pct: Optional[float] = Field(default=None, ge=0, le=1, description="Percent of stocks above key moving average.")
+
+
+class ProfitPolicyMarketContext(BaseModel):
+    """Non-binding normalized context for deterministic profit policy."""
+
+    context_version: str = "profit-market-context.v1"
+    regime: Regime
+    risk_level: RiskLevel
+    atr_pct: Optional[float] = Field(default=None, ge=0)
+    volatility_percentile: Optional[float] = Field(default=None, ge=0, le=100)
+    trend_strength: Optional[float] = Field(default=None, ge=0, le=1)
+    observed_at: Optional[datetime] = None
+    source: str = "market-regime-agent"
 
 
 class MarketRegimeData(BaseModel):
@@ -57,6 +72,7 @@ class MarketRegimeData(BaseModel):
     reason: str
     strategy_bias: Dict[str, float]
     signals: Dict[str, Any]
+    profit_policy_context: Optional[ProfitPolicyMarketContext] = None
 
 
 class StrategyRecommendation(BaseModel):

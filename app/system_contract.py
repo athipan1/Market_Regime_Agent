@@ -1,47 +1,44 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.models import StandardAgentResponse
+from app.security import resolve_correlation_id
 
 MARKET_REGIME_AGENT_TYPE = "market-regime-agent"
-MARKET_REGIME_AGENT_VERSION = "0.1.0"
-SCHEMA_VERSION = "1.0"
+MARKET_REGIME_AGENT_VERSION = "0.2.0"
+SCHEMA_VERSION = "1.1"
 
 router = APIRouter()
-
-
-def utc_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def contract_response(
     *,
     status: str,
+    correlation_id: str,
     data: Dict[str, Any] | None = None,
     metadata: Dict[str, Any] | None = None,
     error: Dict[str, Any] | None = None,
     confidence_score: float | None = None,
 ) -> Dict[str, Any]:
-    return {
-        "status": status,
-        "agent_type": MARKET_REGIME_AGENT_TYPE,
-        "version": MARKET_REGIME_AGENT_VERSION,
-        "schema_version": SCHEMA_VERSION,
-        "timestamp": utc_timestamp(),
-        "correlation_id": None,
-        "data": data,
-        "metadata": metadata or {},
-        "error": error,
-        "confidence_score": confidence_score,
-    }
+    response = StandardAgentResponse[Dict[str, Any]](
+        status=status,
+        correlation_id=correlation_id,
+        data=data,
+        metadata=metadata or {},
+        error=error,
+        confidence_score=confidence_score,
+    )
+    return response.model_dump(mode="json")
 
 
 @router.get("/version")
-def version() -> Dict[str, Any]:
+def version(correlation_id: str = Depends(resolve_correlation_id)) -> Dict[str, Any]:
     return contract_response(
         status="success",
+        correlation_id=correlation_id,
         data={
             "agent_type": MARKET_REGIME_AGENT_TYPE,
             "version": MARKET_REGIME_AGENT_VERSION,
@@ -55,9 +52,10 @@ def version() -> Dict[str, Any]:
 
 
 @router.get("/ready")
-def ready() -> Dict[str, Any]:
+def ready(correlation_id: str = Depends(resolve_correlation_id)) -> Dict[str, Any]:
     return contract_response(
         status="success",
+        correlation_id=correlation_id,
         data={
             "ready": True,
             "regime_endpoint": "/market/regime",
@@ -65,6 +63,7 @@ def ready() -> Dict[str, Any]:
             "strategy_bias_endpoint": "/market/strategy-bias",
             "strategy_endpoint": "/market/strategy",
             "supported_regimes": ["bull", "bear", "sideways", "volatile", "unknown"],
+            "supported_risk_levels": ["low", "medium", "high", "unknown"],
         },
         metadata={
             "contract_source": "market-regime-agent-runtime-contract",

@@ -22,6 +22,7 @@ class RiskLevel(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    UNKNOWN = "unknown"
 
 
 class RecommendedMode(str, Enum):
@@ -38,6 +39,24 @@ class RecommendedStrategy(str, Enum):
     NO_TRADE = "no_trade"
 
 
+class RecommendedAction(str, Enum):
+    TRADE = "trade"
+    NO_TRADE = "no_trade"
+    REVIEW = "review"
+
+
+class DataQualityStatus(str, Enum):
+    GOOD = "good"
+    REVIEW = "review"
+    BLOCKED = "blocked"
+
+
+class VolatilityEvidence(str, Enum):
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    MISSING = "missing"
+
+
 class MarketRegimeRequest(BaseModel):
     symbol: str = Field(default="SPY", description="Market proxy symbol, usually SPY/QQQ/VTI.")
     price: Optional[float] = Field(default=None, ge=0)
@@ -48,6 +67,17 @@ class MarketRegimeRequest(BaseModel):
     market_data_timestamp: Optional[datetime] = None
     vix: Optional[float] = Field(default=None, ge=0)
     market_breadth_pct: Optional[float] = Field(default=None, ge=0, le=1, description="Percent of stocks above key moving average.")
+
+
+class MarketDataQuality(BaseModel):
+    status: DataQualityStatus
+    trade_allowed: bool
+    trend_evidence_complete: bool
+    volatility_evidence: VolatilityEvidence
+    timestamp_present: bool
+    stale: bool = False
+    data_age_seconds: Optional[float] = Field(default=None, ge=0)
+    reasons: List[str] = Field(default_factory=list)
 
 
 class ProfitPolicyMarketContext(BaseModel):
@@ -72,6 +102,7 @@ class MarketRegimeData(BaseModel):
     reason: str
     strategy_bias: Dict[str, float]
     signals: Dict[str, Any]
+    data_quality: MarketDataQuality
     profit_policy_context: Optional[ProfitPolicyMarketContext] = None
 
 
@@ -80,6 +111,7 @@ class StrategyRecommendation(BaseModel):
     regime: Regime
     risk_level: RiskLevel
     recommended_mode: RecommendedMode
+    recommended_action: RecommendedAction
     recommended_strategy: RecommendedStrategy
     position_size_multiplier: float = Field(ge=0, le=1)
     risk_multiplier: float = Field(default=1.0, ge=0, le=1)
@@ -92,6 +124,7 @@ class StrategyRecommendation(BaseModel):
     blocked_strategies: List[RecommendedStrategy] = Field(default_factory=list)
     decision_notes: List[str] = Field(default_factory=list)
     signals: Dict[str, Any]
+    data_quality: MarketDataQuality
 
 
 class HealthData(BaseModel):
@@ -102,8 +135,11 @@ class HealthData(BaseModel):
 class StandardAgentResponse(BaseModel, Generic[T]):
     status: str
     agent_type: str = "market-regime-agent"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
+    schema_version: str = "1.1"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    correlation_id: Optional[str] = None
     data: Optional[T] = None
-    error: Optional[Dict[str, Any]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    error: Optional[Dict[str, Any]] = None
+    confidence_score: Optional[float] = Field(default=None, ge=0, le=1)
